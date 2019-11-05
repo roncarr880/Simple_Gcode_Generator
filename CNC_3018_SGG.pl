@@ -84,9 +84,9 @@
             -height => 30,
             -width => 100
        );
-       $main->{Spindle}->Min(800);
-       $main->{Spindle}->Max(10000);
-       $main->{Spindle}->Pos(5000);
+       $main->{Spindle}->Min(200);
+       $main->{Spindle}->Max(1000);
+       $main->{Spindle}->Pos(1000);
        
        $main->AddLabel(
            -text => "Feed Rate",
@@ -261,6 +261,31 @@
            -left => 360,
       );
 
+      $main->AddLabel(
+           -text => "Input Units",        # MILS or MM.  Output is always in MM
+           -top  => 10,
+           -left => 650,
+           -font => $medium_font
+      );
+      my $units0 = $main->AddRadioButton(
+           -name => "Units_mm",
+           -text => " mm ",
+           -top  => 30,
+           -left => 640,
+           -group => 1
+      );
+
+      $units0->Checked(1);
+      my $conversion_factor = 1.0;
+
+      my $units1 = $main->AddRadioButton(
+           -name => "Units_mils",
+           -text => "mils",
+           -top  => 30,
+           -left => 710,
+      );
+
+
 
 # my $step3 = $main->AddButton(     #debug button
 #      -name => "TEN_K",
@@ -289,17 +314,17 @@
 #}
 
 sub Header_Click {
-   my $x = $txt4->GetLineCount();
+   my $i = $txt4->GetLineCount();
    $txt4->Append("( Header Gcode )\r\n");
    $txt4->Append("G21  ( mm )\r\n");
    $txt4->Append("G90  ( absolute )\r\n");
    $txt4->Append("M5   ( stop spindle )\r\n");
-   $txt4->Append("G0  Z10.0    ( raise the tool )\r\n" );
+   $txt4->Append("G0  Z5.0    ( raise the tool )\r\n" );
    $txt4->Append("G0  X0.0 Y0.0\r\n\r\n");
-   my $y = $txt4->GetLineCount();
+   my $j = $txt4->GetLineCount();
 
-   print2file( $x, $y );
-   reset_position( 10 );
+   print2file( $i, $j );
+   reset_position( );
 }
 
 sub print2file {
@@ -317,87 +342,114 @@ sub print2file {
 
 sub Footer_Click {
 
-   my $x = $txt4->GetLineCount();
+   my $i = $txt4->GetLineCount();
    $txt4->Append("\r\n( Footer )\r\n");
-   $txt4->Append("M5\r\nG0   Z10.0\r\nG0  X0.0 Y0.0\r\nM30   ( End )\r\n");
-   my $y = $txt4->GetLineCount();
-   print2file( $x, $y ); 
+   $txt4->Append("M5\r\nG0   Z5.0\r\nG0  X0.0 Y0.0\r\nM30   ( End )\r\n");
+   my $j = $txt4->GetLineCount();
+   print2file( $i, $j ); 
    reset_position( ); 
 }
 
 sub Goto_Click {
 
-   my $x = $txt4->GetLineCount();
-   $txt4->Append("G0  Z10.0   (GoTo)\r\n");    # safe tool height
-   $txt4->Append("G0  X" . $main->{X}->GetLine(0) . "  Y" . $main->{Y}->GetLine(0) . "\r\n");
-   my $y = $txt4->GetLineCount();
-   print2file( $x, $y );
-   update_position(10);
+   my $x = $main->{X}->GetLine(0) * $conversion_factor;
+   my $y = $main->{Y}->GetLine(0) * $conversion_factor;
+
+   my $i = $txt4->GetLineCount();
+   $txt4->Append("G0  Z5.0   (GoTo)\r\n");    # safe tool height
+   $txt4->Append("G0  X" . $x . "  Y" . $y . "\r\n");
+   my $j = $txt4->GetLineCount();
+   print2file( $i, $j );
+   update_position(5/$conversion_factor);
 
 }
 
 sub Drill_Click {
 
-   my $rate = $main->{Feed}->Pos();
+   my $depth = $main->{Drill_Depth}->GetLine(0) * $conversion_factor;
+
+   $rate = $main->{Feed}->Pos();
    $rate /= 8;
-   my $x = $txt4->GetLineCount();
+   my $i = $txt4->GetLineCount();
    $txt4->Append("M3  S" . $main->{Spindle}->Pos() . "\r\n");
    $txt4->Append("G0  Z0.1    ( Drill )\r\n");     # fast to close to work
-   $txt4->Append("G1  Z-" . $main->{Drill_Depth}->GetLine(0) );
+   $txt4->Append("G1  Z-" . $depth );
    $txt4->Append("  F" . $rate . "\r\n");
    $txt4->Append("G1  Z0.1   F" . $rate*8 . "\r\n");
-   my $y = $txt4->GetLineCount();
-   print2file( $x, $y );
-   update_position(0.1);
+   my $j = $txt4->GetLineCount();
+   print2file( $i, $j );
+   update_position(0.1/$conversion_factor);
 
 }
 
 sub Mill_Click {
 
+   my $depth = $main->{Mill_Depth}->GetLine(0) * $conversion_factor;
+   my $x = $main->{X}->GetLine(0) * $conversion_factor;
+   my $y = $main->{Y}->GetLine(0) * $conversion_factor;
+
    my $rate = $main->{Feed}->Pos();
-   my $x = $txt4->GetLineCount();
+   my $i = $txt4->GetLineCount();
    $txt4->Append("M3  S" . $main->{Spindle}->Pos() . "\r\n");
    $txt4->Append("G0  Z0.1    ( Mill )\r\n");     # fast to close to work
-   $txt4->Append("G1  Z-" . $main->{Mill_Depth}->GetLine(0) );
+   $txt4->Append("G1  Z-" . $depth );
    $txt4->Append("  F" . $rate/8 . "\r\n");
-   $txt4->Append("G1  X" . $main->{X}->GetLine(0) . "   Y" . $main->{Y}->GetLine(0));
+   $txt4->Append("G1  X" . $x . "   Y" . $y);
    $txt4->Append("   F" . $rate . "\r\n");
    $txt4->Append("G1  Z0.1   F" . $rate*2 . "\r\n");
-   my $y = $txt4->GetLineCount();
-   print2file( $x, $y );
-   update_position(0.1);
+   my $j = $txt4->GetLineCount();
+   print2file( $i, $j );
+   update_position(0.1/$conversion_factor);
 }
 
 sub CL_ARC_Click {
 
+   my $depth = main->{Mill_Depth}->GetLine(0) * $conversion_factor;
+   my $x = $main->{X}->GetLine(0) * $conversion_factor;
+   my $y = $main->{Y}->GetLine(0) * $conversion_factor;
+   my $radius = $main->{Radius}->GetLine(0) * $conversion_factor;
+
    my $rate = $main->{Feed}->Pos();
-   my $x = $txt4->GetLineCount();
+   my $i = $txt4->GetLineCount();
    $txt4->Append("M3  S" . $main->{Spindle}->Pos() . "\r\n");
    $txt4->Append("G0  Z0.1    ( CL Arc )\r\n");     # fast to close to work
-   $txt4->Append("G1  Z-" . $main->{Mill_Depth}->GetLine(0) );
+   $txt4->Append("G1  Z-" . $depth );
    $txt4->Append("  F" . $rate/8 . "\r\n");
-   $txt4->Append("G2  X" . $main->{X}->GetLine(0) . "   Y" . $main->{Y}->GetLine(0));
-   $txt4->Append("   F" . $rate . "   R" . $main->{Radius}->GetLine(0) . "\r\n");
+   $txt4->Append("G2  X" . $x . "   Y" . $y);
+   $txt4->Append("   F" . $rate . "   R" . $radius . "\r\n");
    $txt4->Append("G1  Z0.1   F" . $rate*2 . "\r\n");
-   my $y = $txt4->GetLineCount();
-   print2file( $x, $y );
-   update_position(0.1);
+   my $j = $txt4->GetLineCount();
+   print2file( $i, $j );
+   update_position(0.1/$conversion_factor);
 }
 
 sub CC_ARC_Click {
 
+   my $depth = main->{Mill_Depth}->GetLine(0) * $conversion_factor;
+   my $x = $main->{X}->GetLine(0) * $conversion_factor;
+   my $y = $main->{Y}->GetLine(0) * $conversion_factor;
+   my $radius = $main->{Radius}->GetLine(0) * $conversion_factor;
+
    my $rate = $main->{Feed}->Pos();
-   my $x = $txt4->GetLineCount();
+   my $i = $txt4->GetLineCount();
    $txt4->Append("M3  S" . $main->{Spindle}->Pos() . "\r\n");
    $txt4->Append("G0  Z0.1    ( CC Arc )\r\n");     # fast to close to work
-   $txt4->Append("G1  Z-" . $main->{Mill_Depth}->GetLine(0) );
+   $txt4->Append("G1  Z-" . $depth );
    $txt4->Append("  F" . $rate/8 . "\r\n");
-   $txt4->Append("G3  X" . $main->{X}->GetLine(0) . "   Y" . $main->{Y}->GetLine(0));
-   $txt4->Append("   F" . $rate . "   R" . $main->{Radius}->GetLine(0) . "\r\n");
+   $txt4->Append("G3  X" . $x . "   Y" . $y);
+   $txt4->Append("   F" . $rate . "   R" . $radius . "\r\n");
    $txt4->Append("G1  Z0.1   F" . $rate*2 . "\r\n");
-   my $y = $txt4->GetLineCount();
-   print2file( $x, $y );
-   update_position(0.1);
+   my $j = $txt4->GetLineCount();
+   print2file( $i, $j );
+   update_position(0.1/$conversion_factor);
+}
+
+sub Units_mm_Click {
+   $conversion_factor = 1.0;
+}
+
+sub Units_mils_Click {                 # convert mils to mm for the output file
+   $conversion_factor = 0.0254;
 }
 
 
@@ -415,9 +467,10 @@ sub update_position {
 
 sub reset_position {
 
+  my $z = 5.0/$conversion_factor;
   $X_Position->Text( '0.00' );
   $Y_Position->Text( '0.00' );
-  $Z_Position->Text( '10.0' );
+  $Z_Position->Text(  $z );
 
 
 }
