@@ -425,7 +425,7 @@ sub CL_ARC_Click {
 
 sub CC_ARC_Click {
 
-   my $depth = main->{Mill_Depth}->GetLine(0) * $conversion_factor;
+   my $depth = $main->{Mill_Depth}->GetLine(0) * $conversion_factor;
    my $x = $main->{X}->GetLine(0) * $conversion_factor;
    my $y = $main->{Y}->GetLine(0) * $conversion_factor;
    my $radius = $main->{Radius}->GetLine(0) * $conversion_factor;
